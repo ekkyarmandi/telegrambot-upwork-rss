@@ -1,0 +1,9 @@
+start - showing menu
+3d - get notified of the latest 3D projects
+scraping - get notified for latest Scraping projects
+music - get notified of the latest Music projects
+illustration - get notified for latest  Illustration projects
+nft - get notified of the latest NFT projects
+python - get notified of the latest Python projects
+status - to see your subscriptions list 
+stop - stop all subscriptions
