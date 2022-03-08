@@ -42,11 +42,29 @@ def update_category(userid,key,value):
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     try:
-        cmd = f"UPDATE user SET {key}={value} WHERE userid={userid}"
-        cur.execute(cmd)
+        cur.execute(f"UPDATE user SET {key}={value} WHERE userid={userid}")
         con.commit()
     except: pass
     con.close()
+
+def query(userid):
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    try:
+        cur.execute(f"SELECT model_3d,scraping,music,illustration,nft,python FROM user WHERE userid={userid}")
+        con.commit()
+        results = cur.fetchall()
+        values = {
+            "model_3d": results[0][0],
+            "scraping": results[0][1],
+            "music": results[0][2],
+            "illustration": results[0][3],
+            "nft": results[0][4],
+            "python": results[0][5]
+        }
+    except: values = None
+    con.close()
+    return values
 
 if __name__ == "__main__":
 
