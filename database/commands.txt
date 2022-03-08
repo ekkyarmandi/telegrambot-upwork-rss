@@ -6,4 +6,5 @@ illustration - get notified for latest  Illustration job postings
 nft - get notified of the latest NFT job postings
 python - get notified of the latest Python job postings
 status - to see your subscriptions list 
-unsubscribe <keyword> - to stop all the subscriptions
+unsubscribe <keyword> - to unsubscribe a job posting notification
+unsubscribe_all - to stop all the subscriptions
