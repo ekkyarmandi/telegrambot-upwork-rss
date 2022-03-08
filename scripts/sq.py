@@ -52,7 +52,6 @@ def query(userid):
     cur = con.cursor()
     try:
         cur.execute(f"SELECT model_3d,scraping,music,illustration,nft,python FROM user WHERE userid={userid}")
-        con.commit()
         results = cur.fetchall()
         values = {
             "model_3d": results[0][0],
@@ -62,6 +61,17 @@ def query(userid):
             "nft": results[0][4],
             "python": results[0][5]
         }
+    except: values = None
+    con.close()
+    return values
+
+def query_one(userid,key):
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    try:
+        cur.execute(f"SELECT {key} FROM user WHERE userid={userid}")
+        results = cur.fetchall()
+        values = results[0][0]
     except: values = None
     con.close()
     return values

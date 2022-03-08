@@ -6,6 +6,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from scripts.config import API
 from scripts.sq import *
 from datetime import datetime
+import time
 
 # Enable logging
 logging.basicConfig(
@@ -31,24 +32,43 @@ def start(update: Update, context: CallbackContext) -> None:
     add_user(user)
     
     # send the list of the command
-    msg = "Command List:\n" + show_commands('./database/commands.txt')
-    update.message.reply_text(msg)
+    msg = "*Command List*\n\n" + show_commands('./database/commands.txt')
+    update.message.reply_text(msg,parse_mode=ParseMode.MARKDOWN_V2)
 
 def show_commands(file_path):
     with open(file_path) as f:
         msg = []
         lines = f.readlines()
         for line in lines:
-            msg.append("/"+line.strip())
+            line = line.replace("<","\<")
+            line = line.replace(">","\>")
+            line = line.replace("-","\-")
+            msg.append("/"+line)
     return "\n".join(msg)
 
 def subscribe(update: Update, context: CallbackContext) -> None:
     """Subscribe Upwork jobs feed for a specific job category"""
     userid = update.effective_user.id
     key = update.effective_message.text.strip("/")
-    if key == "3d": key = "model_3d"
-    try: update_category(userid,key,1)
-    except: update.message.reply_text("You are not registered yet. Press /start for register.")
+    
+    if key == "3d":
+        key = "model_3d"
+
+    status = query_one(userid,key)
+    if status:
+        update.message.reply_text(
+            f"You have been subscribed to `{key}` job postings\. Type /status to see your subscription list\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    else:
+        try:
+            update_category(userid,key,1)
+            update.message.reply_text(
+                    f"You are now subscribed to `{key}` job postings\.",
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
+        except:
+            update.message.reply_text("You are not registered yet. Type /start for register.")
 
 def unsubscribe(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
@@ -60,20 +80,20 @@ def unsubscribe(update: Update, context: CallbackContext) -> None:
             text = show_status(userid)
             update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
         except:
-            update.message.reply_text("You are not in the list. Press /start for register.")
+            update.message.reply_text("You are not in the list. Type /start for register.")
     elif key == "3d":
         key = "model_3d"
         try:
             update_category(userid,key,0)
             text = show_status(userid)
             update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-        except: update.message.reply_text("You are not in the list. Press /start for register.")
+        except: update.message.reply_text("You are not in the list. Type /start for register.")
     elif key in ["scraping","music","illustration","nft","python"]:
         try:
             update_category(userid,key,0)
             text = show_status(userid)
             update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-        except: update.message.reply_text("You are not registered yet. Press /start for register.")
+        except: update.message.reply_text("You are not registered yet. Type /start for register.")
     else:
         update.message.reply_text(
             "Please add \<keyword\> on the end of it \(i\.e\. `/unsubscribe all`\) for unsubscribe everything",
@@ -88,7 +108,7 @@ def status(update: Update, context: CallbackContext) -> None:
 def show_status(userid):
     values = query(userid)
     try:
-        text = "*Subscription List*:\n"
+        text = "*Subscription List*\n"
         l = max([len(k) for k in values.keys()])
         for k,v in values.items():
             if k == "model_3d":
@@ -102,7 +122,14 @@ def show_status(userid):
             text += f'• `{k+s}: {v}`\n'
         return text
     except:
-        return "You are not registered yet. Press /start for register."
+        return "You are not registered yet. Type /start for register."
+
+def test(update: Update, context: CallbackContext):
+    i = 0
+    while True:
+        i += 1
+        update.message.reply_text(i)
+        time.sleep(1)
 
 def main() -> None:
     """Start the bot."""
@@ -123,6 +150,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("status", status))
     dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
     dispatcher.add_handler(CommandHandler("help", start))
+    dispatcher.add_handler(CommandHandler("test", test))
 
     # Start the Bot
     updater.start_polling()
