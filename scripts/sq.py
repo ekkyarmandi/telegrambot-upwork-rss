@@ -76,6 +76,26 @@ def query_one(userid,key):
     con.close()
     return values
 
+def query_job():
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT title,description,link,budget,posted_on,category,skills,country FROM jobs")
+        results = cur.fetchall()
+        values = {
+            "title": results[0][0],
+            "description": results[0][1],
+            "link": results[0][2],
+            "budget": results[0][3],
+            "posted_on": results[0][4],
+            "category": results[0][5],
+            "skills": results[0][6],
+            "country": results[0][7]
+        }
+    except: values = None
+    con.close()
+    return values
+
 if __name__ == "__main__":
 
     # test create table

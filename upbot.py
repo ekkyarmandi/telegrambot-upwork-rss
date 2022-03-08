@@ -5,8 +5,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 
 from scripts.config import API
 from scripts.sq import *
+from scripts.cmd import *
 from datetime import datetime
-import time
+import re
 
 # Enable logging
 logging.basicConfig(
@@ -46,65 +47,6 @@ def show_commands(file_path):
             msg.append("/"+line)
     return "\n".join(msg)
 
-def subscribe(update: Update, context: CallbackContext) -> None:
-    """Subscribe Upwork jobs feed for a specific job category"""
-    userid = update.effective_user.id
-    key = update.effective_message.text.strip("/")
-    
-    if key == "3d":
-        key = "model_3d"
-
-    status = query_one(userid,key)
-    if status:
-        update.message.reply_text(
-            f"You have been subscribed to `{key}` job postings\. Type /status to see your subscription list\.",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-    else:
-        try:
-            update_category(userid,key,1)
-            update.message.reply_text(
-                    f"You are now subscribed to `{key}` job postings\.",
-                    parse_mode=ParseMode.MARKDOWN_V2
-                )
-        except:
-            update.message.reply_text("You are not registered yet. Type /start for register.")
-
-def unsubscribe(update: Update, context: CallbackContext) -> None:
-    userid = update.effective_user.id
-    key = update.effective_message.text.split()[-1]
-    if key == "all":
-        try: 
-            for k in ["model_3d","scraping","music","illustration","nft","python"]:
-                update_category(userid,k,0)
-            text = show_status(userid)
-            update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-        except:
-            update.message.reply_text("You are not in the list. Type /start for register.")
-    elif key == "3d":
-        key = "model_3d"
-        try:
-            update_category(userid,key,0)
-            text = show_status(userid)
-            update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-        except: update.message.reply_text("You are not in the list. Type /start for register.")
-    elif key in ["scraping","music","illustration","nft","python"]:
-        try:
-            update_category(userid,key,0)
-            text = show_status(userid)
-            update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-        except: update.message.reply_text("You are not registered yet. Type /start for register.")
-    else:
-        update.message.reply_text(
-            "Please add \<keyword\> on the end of it \(i\.e\. `/unsubscribe all`\) for unsubscribe everything",
-            parse_mode=ParseMode.MARKDOWN_V2
-        )
-
-def status(update: Update, context: CallbackContext) -> None:
-    userid = update.effective_user.id
-    text = show_status(userid)
-    update.message.reply_text(text,parse_mode=ParseMode.MARKDOWN_V2)
-
 def show_status(userid):
     values = query(userid)
     try:
@@ -124,12 +66,107 @@ def show_status(userid):
     except:
         return "You are not registered yet. Type /start for register."
 
+def subscribe(update: Update, context: CallbackContext) -> None:
+    """Subscribe Upwork jobs feed for a specific job category"""
+    userid = update.effective_user.id
+    key = update.effective_message.text.strip("/")
+    
+    if key == "3d": key = "model_3d"
+    status = query_one(userid,key)
+    if status:
+        update.message.reply_text(
+            f"You have been subscribed to `{key}` job postings\. Type /status to see your subscription list\.",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    else:
+        try:
+            update_category(userid,key,1)
+            update.message.reply_text(
+                    f"You are now subscribed to `{key}` job postings\.",
+                    parse_mode=ParseMode.MARKDOWN_V2
+                )
+        except:
+            update.message.reply_text("You are not registered yet. Type /start for register.")
+
+def unsubscribe(update: Update, context: CallbackContext) -> None:
+    userid = update.effective_user.id
+    key = update.effective_message.text.split()[-1]
+    if key == "3d":
+        key = "model_3d"
+        try:
+            update_category(userid,key,0)
+            update.message.reply_text(
+                show_status(userid),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except:
+            update.message.reply_text("You are not in the list. Type /start for register.")
+    elif key in ["scraping","music","illustration","nft","python"]:
+        try:
+            update_category(userid,key,0)
+            update.message.reply_text(
+                show_status(userid),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except:
+            update.message.reply_text("You are not registered yet. Type /start for register.")
+    else:
+        update.message.reply_text(
+            "Please add \<keyword\> on the end of it \(i\.e\. `/unsubscribe python`\) for unsubscribe for getting python job postings",
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+
+def unsubscribe_all(update: Update, context: CallbackContext) -> None:
+    userid = update.effective_user.id
+    key = update.effective_message.text.split()[-1]
+    if key == "all":
+        try: 
+            for k in ["model_3d","scraping","music","illustration","nft","python"]:
+                update_category(userid,k,0)
+            update.message.reply_text(
+                show_status(userid),
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
+        except:
+            update.message.reply_text("You are not in the list. Type /start for register.")
+
+def status(update: Update, context: CallbackContext) -> None:
+    userid = update.effective_user.id
+    update.message.reply_text(
+        show_status(userid),
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
+
+def send_job(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id
+    # profile = query(userid)
+    job = query_job()
+    msg = job_posting(job)
+    context.bot.send_message(
+        text=msg,
+        chat_id=user_id,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+def job_posting(job):
+    title = f"<a href='{job['link']}'>{job['title']}</a>"
+    description = re.sub("\s+"," ",job['description']).strip()
+    if len(description) > 360:
+        description = description[:360].strip().strip(".") + "..."
+    budget = job['budget']
+    if budget == None:
+        budget = "Unknown"
+    tags = job['skills'].replace(" ","_")
+    tags = tags.replace(",_",", ")
+    country = job['country']
+    posted = sec2hms(job['posted_on'])
+    msg = f"{title}\n\n{description}\n\n{tags}\n<i>{country}</i>\n<i>{budget}</i>\n<i>({posted})</i>"
+    return msg
+
 def test(update: Update, context: CallbackContext):
-    i = 0
-    while True:
-        i += 1
-        update.message.reply_text(i)
-        time.sleep(1)
+    message = context.bot.send_message(chat_id=1880154867,text='hi')
+    context.bot.edit_message_text('hello world', chat_id=1880154867, message_id=message.message_id)
 
 def main() -> None:
     """Start the bot."""
@@ -141,6 +178,7 @@ def main() -> None:
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("job", send_job))
     dispatcher.add_handler(CommandHandler("3d", subscribe))
     dispatcher.add_handler(CommandHandler("scraping", subscribe))
     dispatcher.add_handler(CommandHandler("music", subscribe))
@@ -149,8 +187,9 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("python", subscribe))
     dispatcher.add_handler(CommandHandler("status", status))
     dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
+    dispatcher.add_handler(CommandHandler("unsubscribe_all", unsubscribe_all))
     dispatcher.add_handler(CommandHandler("help", start))
-    dispatcher.add_handler(CommandHandler("test", test))
+    dispatcher.add_handler(CommandHandler("test", test, run_async=True))
 
     # Start the Bot
     updater.start_polling()
