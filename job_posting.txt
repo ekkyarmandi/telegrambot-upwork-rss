@@ -1,9 +1,0 @@
-title
-
-description
-
-tags
-country
-budget
-
-posted: while time ago
