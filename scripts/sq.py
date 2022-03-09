@@ -12,11 +12,14 @@ def table_format(file_path):
 def create_table(table_name,file_path):
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
-    cmd = f"CREATE TABLE {table_name} ({table_format(file_path)})"
-    cur.execute(cmd)
-    con.commit()
+    try:
+        cmd = f"CREATE TABLE {table_name} ({table_format(file_path)})"
+        cur.execute(cmd)
+        con.commit()
+        print(f"New, {table_name} table created inside {DATABASE}")
+    except:
+        print(f"{table_name} table exists!")        
     con.close()
-    print(f"New, {table_name} table created inside {DATABASE}")
 
 def add_user(user):
     con = sqlite3.connect(DATABASE)
@@ -41,20 +44,15 @@ def update_category(userid,key,value):
     except: pass
     con.close()
 
-def query(userid):
+def query_subscription(userid):
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     try:
-        cur.execute(f"SELECT model_3d,scraping,music,illustration,nft,python FROM user WHERE userid={userid}")
+        keys = ["model_3d","scraping","music","illustration","nft","python"]
+        select = ",".join(keys)
+        cur.execute(f"SELECT {select} FROM user WHERE userid={userid}")
         results = cur.fetchall()
-        values = {
-            "model_3d": results[0][0],
-            "scraping": results[0][1],
-            "music": results[0][2],
-            "illustration": results[0][3],
-            "nft": results[0][4],
-            "python": results[0][5]
-        }
+        values = {k:v for k,v in zip(keys,results[0])}
     except:
         values = None
     con.close()
@@ -76,24 +74,63 @@ def query_job():
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     try:
-        cur.execute("SELECT title,description,link,budget,posted_on,category,skills,country FROM jobs")
+        keys = ["hash","title","description","link","budget","posted_on","category","tags","country","label"]
+        select = ",".join(keys)
+        cur.execute(f"SELECT {select} FROM job ORDER BY posted_on,label")
         results = cur.fetchall()
-        values = {
-            "title": results[0][0],
-            "description": results[0][1],
-            "link": results[0][2],
-            "budget": results[0][3],
-            "posted_on": results[0][4],
-            "category": results[0][5],
-            "skills": results[0][6],
-            "country": results[0][7]
-        }
+        values = [{k:v for k,v in zip(keys,result)} for result in results]
     except: values = None
     con.close()
     return values
 
+def query_users():
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    cur.execute("SELECT userid FROM user")
+    data = cur.fetchall()
+    con.close()
+    return [u[0] for u in data]
+
+def update_stream(**kwargs):
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    try:
+        keys = ",".join([str(k) for k in kwargs.keys()])
+        values = [v for v in kwargs.values()]
+        cur.execute(f"INSERT or IGNORE INTO stream({keys}) VALUES(?,?,?)",(values[0],values[1],values[2]))
+        con.commit()
+    except: pass
+    con.close()
+
+def query_stream(user_id,job_hash):
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    try:
+        cur.execute(f"SELECT message_id FROM stream WHERE user_id='{user_id}' AND hash='{job_hash}'")
+        data = cur.fetchone()
+    except:
+        data = None
+    con.close()
+    if data != None: return data[0]
+    else: return data
+
+def reset_stream():
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    cur.execute("DELETE FROM stream")
+    con.commit()
+    con.close()
+
+def delete_job(job_hash):
+    con = sqlite3.connect(DATABASE)
+    cur = con.cursor()
+    cur.execute(f"DELETE FROM job WHERE hash='{job_hash}'")
+    con.commit()
+    con.close()
+    
 if __name__ == "__main__":
 
     # test create table
     create_table('user','./database/user_table.txt')
     create_table('job','./database/job_table.txt')
+    create_table('stream','./database/stream_table.txt')
