@@ -7,7 +7,7 @@ from scripts.config import API
 from scripts.sq import *
 from scripts.cmd import *
 from datetime import datetime
-import re
+import time, re
 
 # Enable logging
 logging.basicConfig(
@@ -150,18 +150,22 @@ def send_job(update: Update, context: CallbackContext) -> None:
     )
 
 def job_posting(job):
+    now = time.time()
     title = f"<a href='{job['link']}'>{job['title']}</a>"
+    category = job['category']
     description = re.sub("\s+"," ",job['description']).strip()
     if len(description) > 360:
         description = description[:360].strip().strip(".") + "..."
     budget = job['budget']
     if budget == None:
-        budget = "Unknown"
+        budget = "💸 <i>Budget Unknown</i>"
+    else:
+        budget = f"🤑 <i>{budget}</i>"
     tags = job['skills'].replace(" ","_")
     tags = tags.replace(",_",", ")
     country = job['country']
-    posted = sec2hms(job['posted_on'])
-    msg = f"{title}\n\n{description}\n\n{tags}\n<i>{country}</i>\n<i>{budget}</i>\n<i>({posted})</i>"
+    posted = sec2pass(now-job['posted_on'])
+    msg = f"<b>{title}</b>\n---\n💼 {category}, 📍{country}\n---\n<i>{description}</i>\n---\n{budget}\n⏰ <i>{posted}</i>\n---\n{tags}"
     return msg
 
 def test(update: Update, context: CallbackContext):
