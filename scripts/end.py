@@ -1,12 +1,12 @@
 import requests
-from config import API
+from scripts.config import API
 
 def send_message():
 
     url = f"https://api.telegram.org/bot{API}/sendMessage"
 
     payload = {
-        "text": "🚨 _Server Now Online_",
+        "text": "📴 _Server Now Offline_",
         "parse_mode": "Markdown",
         "disable_web_page_preview": False,
         "disable_notification": False,
@@ -17,8 +17,9 @@ def send_message():
         "Content-Type": "application/json"
     }
 
-    requests.post(url, json=payload, headers=headers)
+    resp = requests.post(url, json=payload, headers=headers)
+    print(resp.json())
 
 if __name__ == "__main__":
 
-    send_message() 
+    send_message()
