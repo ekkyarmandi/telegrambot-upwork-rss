@@ -1,0 +1,10 @@
+hash TEXT UNIQUE
+title TEXT
+description TEXT
+link TEXT
+budget TEXT
+posted_on INTEGER
+category TEXT
+tags TEXT
+country TEXT
+label TEXT

@@ -1,0 +1,10 @@
+userid INTEGER UNIQUE
+username TEXT
+fullname TEXT
+join_date TEXT
+model_3d INTEGER DEFAULT 0
+scraping INTEGER DEFAULT 0
+music INTEGER DEFAULT 0
+illustration INTEGER DEFAULT 0
+nft INTEGER DEFAULT 0
+python INTEGER DEFAULT 0
