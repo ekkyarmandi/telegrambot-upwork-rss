@@ -1,4 +1,0 @@
-Catatan:
-
-• editMessageText - https://python-telegram-bot.readthedocs.io/en/stable/telegram.bot.html#telegram.Bot.edit_message_text
-problem solved: https://www.reddit.com/r/TelegramBots/comments/9lht41/comment/e7kay25/?utm_source=share&utm_medium=web2x&context=3
