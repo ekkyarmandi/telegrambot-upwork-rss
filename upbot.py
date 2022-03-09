@@ -1,7 +1,8 @@
 import logging
 
+import telegram
 from telegram import Update, ParseMode
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, CallbackContext, ChatMemberHandler
 
 from scripts.config import API
 from scripts.sq import *
@@ -33,18 +34,19 @@ def start(update: Update, context: CallbackContext) -> None:
     add_user(user)
     
     # send the list of the command
-    msg = "*Command List*\n\n" + show_commands('./database/commands.txt')
-    update.message.reply_text(msg,parse_mode=ParseMode.MARKDOWN_V2)
+    msg = "*Command List*\n" + show_commands('./database/commands.txt')
+    update.message.reply_text(msg,parse_mode=ParseMode.MARKDOWN)
+
+def server_on(update: Update, context: CallbackContext) -> None:
+    context.bot.send_message(chat_id=1880154867,text="This is auto text.")
 
 def show_commands(file_path):
     with open(file_path) as f:
         msg = []
         lines = f.readlines()
         for line in lines:
-            line = line.replace("<","\<")
-            line = line.replace(">","\>")
-            line = line.replace("-","\-")
-            msg.append("/"+line)
+            line = line.replace("_","\_")
+            msg.append("/"+line.strip())
     return "\n".join(msg)
 
 def show_status(userid):
@@ -88,35 +90,33 @@ def subscribe(update: Update, context: CallbackContext) -> None:
 
 def unsubscribe(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
-    key = context.args[0]
-    if key in ["3d","scraping","music","illustration","nft","python"]:
-        try:
+    try:
+        key = context.args[0]
+        if key in ["3d","scraping","music","illustration","nft","python"]:
             update_category(userid,key,0)
             update.message.reply_text(
                 f"You unsubscribe `{key}`. Type /status to see your subscription list\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
-        except:
+        else:
             update.message.reply_text("You are not registered yet. Type /start for register.")
-    else:
+    except:
         update.message.reply_text(
-            "Please add \<keyword\> on the end of it \(i\.e\. `/unsubscribe python`\) for unsubscribe for getting python job postings",
+            "Please add \<keyword\> on the end of /unsubscribe \<keyword\> \(i\.e\. `/unsubscribe python`\) for unsubscribe getting python job postings notification\.",
             parse_mode=ParseMode.MARKDOWN_V2
         )
-
+        
 def unsubscribe_all(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
-    key = context.args[0]
-    if key == "all":
-        try: 
-            for k in ["model_3d","scraping","music","illustration","nft","python"]:
-                update_category(userid,k,0)
-            update.message.reply_text(
-                show_status(userid),
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-        except:
-            update.message.reply_text("You are not in the list. Type /start for register.")
+    try: 
+        for k in ["3d","scraping","music","illustration","nft","python"]:
+            update_category(userid,k,0)
+        update.message.reply_text(
+            show_status(userid),
+            parse_mode=ParseMode.MARKDOWN_V2
+        )
+    except:
+        update.message.reply_text("You are not in the list. Type /start for register.")
 
 def status(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
@@ -160,6 +160,9 @@ def test(update: Update, context: CallbackContext):
     message = context.bot.send_message(chat_id=1880154867,text='hi')
     context.bot.edit_message_text('hello world', chat_id=1880154867, message_id=message.message_id)
 
+def test_async():
+    print("run in thread")
+
 def main() -> None:
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
@@ -167,6 +170,18 @@ def main() -> None:
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
+
+    # Run the UpWork RSS scraper
+    # 
+
+    # Broad cast to all users
+    # dispatcher.bot.send_message(
+    #     chat_id=1880154867,
+    #     text="🚨 _Server is Now Online_",
+    #     parse_mode=ParseMode.MARKDOWN
+    # )
+
+    # dispatcher.run_async(test_async)
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
