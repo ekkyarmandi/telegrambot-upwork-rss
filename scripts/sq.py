@@ -39,6 +39,7 @@ def add_user(user):
     con.close()
 
 def update_category(userid,key,value):
+    if key == "3d": key = "model_3d"
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     try:
@@ -66,6 +67,7 @@ def query(userid):
     return values
 
 def query_one(userid,key):
+    if key == "3d": key = "model_3d"
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     try:
@@ -73,7 +75,7 @@ def query_one(userid,key):
         values = cur.fetchone()
     except: values = None
     con.close()
-    return values
+    return values[0]
 
 def query_job():
     con = sqlite3.connect(DATABASE)

@@ -70,8 +70,6 @@ def subscribe(update: Update, context: CallbackContext) -> None:
     """Subscribe Upwork jobs feed for a specific job category"""
     userid = update.effective_user.id
     key = update.effective_message.text.strip("/")
-    
-    if key == "3d": key = "model_3d"
     status = query_one(userid,key)
     if status:
         update.message.reply_text(
@@ -90,22 +88,12 @@ def subscribe(update: Update, context: CallbackContext) -> None:
 
 def unsubscribe(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
-    key = update.effective_message.text.split()[-1]
-    if key == "3d":
-        key = "model_3d"
+    key = context.args[0]
+    if key in ["3d","scraping","music","illustration","nft","python"]:
         try:
             update_category(userid,key,0)
             update.message.reply_text(
-                show_status(userid),
-                parse_mode=ParseMode.MARKDOWN_V2
-            )
-        except:
-            update.message.reply_text("You are not in the list. Type /start for register.")
-    elif key in ["scraping","music","illustration","nft","python"]:
-        try:
-            update_category(userid,key,0)
-            update.message.reply_text(
-                show_status(userid),
+                f"You unsubscribe `{key}`. Type /status to see your subscription list\.",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
         except:
@@ -118,7 +106,7 @@ def unsubscribe(update: Update, context: CallbackContext) -> None:
 
 def unsubscribe_all(update: Update, context: CallbackContext) -> None:
     userid = update.effective_user.id
-    key = update.effective_message.text.split()[-1]
+    key = context.args[0]
     if key == "all":
         try: 
             for k in ["model_3d","scraping","music","illustration","nft","python"]:
