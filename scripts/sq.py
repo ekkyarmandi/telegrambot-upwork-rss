@@ -70,8 +70,7 @@ def query_one(userid,key):
     cur = con.cursor()
     try:
         cur.execute(f"SELECT {key} FROM user WHERE userid={userid}")
-        results = cur.fetchall()
-        values = results[0][0]
+        values = cur.fetchone()
     except: values = None
     con.close()
     return values
