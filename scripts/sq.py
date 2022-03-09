@@ -4,26 +4,19 @@ global DATABASE
 
 DATABASE = "./database/jobs.db"
 
-def create_table():
+def table_format(file_path):
+    with open(file_path) as f:
+        lines = f.readlines()
+    return ", ".join([line.strip() for line in lines])
+
+def create_table(table_name,file_path):
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
-    cmd = f"""
-    CREATE TABLE user (
-        userid INTEGER UNIQUE,
-        username TEXT,
-        fullname TEXT,
-        join_date TEXT,
-        model_3d INTEGER DEFAULT 0,
-        scraping INTEGER DEFAULT 0,
-        music INTEGER DEFAULT 0,
-        illustration INTEGER DEFAULT 0,
-        nft INTEGER DEFAULT 0,
-        python INTEGER DEFAULT 0
-    )
-    """
+    cmd = f"CREATE TABLE {table_name} ({table_format(file_path)})"
     cur.execute(cmd)
     con.commit()
     con.close()
+    print(f"New, {table_name} table created inside {DATABASE}")
 
 def add_user(user):
     con = sqlite3.connect(DATABASE)
@@ -62,7 +55,8 @@ def query(userid):
             "nft": results[0][4],
             "python": results[0][5]
         }
-    except: values = None
+    except:
+        values = None
     con.close()
     return values
 
@@ -73,7 +67,8 @@ def query_one(userid,key):
     try:
         cur.execute(f"SELECT {key} FROM user WHERE userid={userid}")
         values = cur.fetchone()
-    except: values = None
+    except:
+        values = None
     con.close()
     return values[0]
 
@@ -100,4 +95,5 @@ def query_job():
 if __name__ == "__main__":
 
     # test create table
-    create_table("./database/jobs.db")
+    create_table('user','./database/user_table.txt')
+    create_table('job','./database/job_table.txt')
