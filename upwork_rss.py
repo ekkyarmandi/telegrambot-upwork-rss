@@ -38,7 +38,7 @@ class UpWorkRSS:
         
         # find text with bold
         rm = []
-        details = format(entry['content'][0]['value'])
+        details = self.reformat(entry['content'][0]['value'])
         for b in re.finditer("(?<=\<b\>)(.*?)(?=\<\/b\>)",details):
             rm.append(b.start())
             title = details[b.start():b.end()]
@@ -128,11 +128,13 @@ class UpWorkRSS:
         param = [f"{k}={v}" for k,v in config.items() if v != None]
         return ref + "?" + "&".join(param)
 
-    def run(self,sleep=1):
+    def run(self,fetch_time=1):
         '''
         Run the RSS requests.
         :param sleep: int or float -> pause query for every <sleep> minute
         '''
+        # print out information
+        print("UpWork RSS Running.. Press Ctrl+Z for canceling the process")
 
         # define the search queries
         search_job = {
@@ -310,7 +312,6 @@ class UpWorkRSS:
         while True:
             
             # gather existings jobs via RSS
-
             for label in search_job:
                 for search in search_job[label]:
                     
@@ -330,9 +331,9 @@ class UpWorkRSS:
                         self.insert()
 
             # continue making the request after sleep time below
-            time.sleep(60*sleep)
+            time.sleep(60*fetch_time)
 
 if __name__ == "__main__":
 
     rss = UpWorkRSS()
-    rss.run(sleep=1)
+    rss.run(fetch_time=5) # minutes

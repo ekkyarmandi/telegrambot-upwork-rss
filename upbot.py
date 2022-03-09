@@ -1,14 +1,22 @@
 import logging
 
-import telegram
 from telegram import Update, ParseMode
-from telegram.ext import Updater, CommandHandler, CallbackContext, ChatMemberHandler
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
 from scripts.config import API
-from scripts.sq import *
 from scripts.cmd import *
+from scripts.sq import *
+from scripts import end
 from datetime import datetime
+from upwork_rss import UpWorkRSS
 import time, re
+
+# define global variable
+global WORKING
+WORKING = []
+
+# Reset stream table from database
+reset_stream()
 
 # Enable logging
 logging.basicConfig(
@@ -17,8 +25,10 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Define a few command handlers. These usually take the two arguments update and
-# context.
+# Assign UpWork RSS
+upwork_rss = UpWorkRSS()
+
+# Define a few command handlers. These usually take the two arguments update and context.
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
 
@@ -37,9 +47,6 @@ def start(update: Update, context: CallbackContext) -> None:
     msg = "*Command List*\n" + show_commands('./database/commands.txt')
     update.message.reply_text(msg,parse_mode=ParseMode.MARKDOWN)
 
-def server_on(update: Update, context: CallbackContext) -> None:
-    context.bot.send_message(chat_id=1880154867,text="This is auto text.")
-
 def show_commands(file_path):
     with open(file_path) as f:
         msg = []
@@ -50,7 +57,7 @@ def show_commands(file_path):
     return "\n".join(msg)
 
 def show_status(userid):
-    values = query(userid)
+    values = query_subscription(userid)
     try:
         text = "*Subscription List*\n"
         l = max([len(k) for k in values.keys()])
@@ -82,9 +89,9 @@ def subscribe(update: Update, context: CallbackContext) -> None:
         try:
             update_category(userid,key,1)
             update.message.reply_text(
-                    f"You are now subscribed to `{key}` job postings\.",
-                    parse_mode=ParseMode.MARKDOWN_V2
-                )
+                f"You are now subscribed to `{key}` job postings\.",
+                parse_mode=ParseMode.MARKDOWN_V2
+            )
         except:
             update.message.reply_text("You are not registered yet. Type /start for register.")
 
@@ -95,8 +102,8 @@ def unsubscribe(update: Update, context: CallbackContext) -> None:
         if key in ["3d","scraping","music","illustration","nft","python"]:
             update_category(userid,key,0)
             update.message.reply_text(
-                f"You unsubscribe `{key}`. Type /status to see your subscription list\.",
-                parse_mode=ParseMode.MARKDOWN_V2
+                f"You unsubscribe `{key}`. Type /status to see your subscription list.",
+                parse_mode=ParseMode.MARKDOWN
             )
         else:
             update.message.reply_text("You are not registered yet. Type /start for register.")
@@ -125,17 +132,81 @@ def status(update: Update, context: CallbackContext) -> None:
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
+# Define the working functions.
 def send_job(update: Update, context: CallbackContext) -> None:
+
+    # make sure user can not execute the callback/command more than once
+    
+    # get the user_id
     user_id = update.effective_user.id
-    # profile = query(userid)
-    job = query_job()
-    msg = job_posting(job)
-    context.bot.send_message(
-        text=msg,
-        chat_id=user_id,
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True
-    )
+    
+    if user_id not in WORKING:
+        WORKING.append(user_id)
+
+        # loop entry point
+        while True:
+
+            now = time.time()
+            
+            # get the user subscribtion
+            profile = query_subscription(user_id)
+            profile = [k for k,v in profile.items() if v]
+            
+            # get all the job
+            jobs = query_job()
+
+            for job in jobs:
+
+                # get job passing time and label
+                timeleaps = now - job['posted_on']
+                label = job['label']
+                job_hash = job['hash']
+                message_id = query_stream(user_id,job_hash)
+
+                # get filter the job based on subscription and time pass
+                if timeleaps <= (3*3600) and label in profile and message_id == None:
+                    
+                    # send the jobs
+                    msg = job_posting(job)
+                    msg_out = context.bot.send_message(
+                        text=msg,
+                        chat_id=user_id,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True
+                    )
+                    
+                    # put some delay
+                    time.sleep(1)
+
+                    # update the sent jobs database
+                    update_stream(
+                        user_id=user_id,
+                        hash=job_hash,
+                        message_id=msg_out.message_id
+                    )
+
+                # filter two: if the job has been sent, then update it's time by editing the message
+                elif message_id != None:
+                    if timeleaps <= (3*3600):
+                        msg = job_posting(job)
+                    else:
+                        msg = "<i>Job Expired</i>"
+                        delete_job(job_hash)
+                    
+                    # edit the existings message
+                    context.bot.edit_message_text(
+                        text=msg,
+                        chat_id=user_id,
+                        message_id=message_id,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True
+                    )
+
+                    # put some delay
+                    time.sleep(1)
+                        
+            # wait for a minute
+            time.sleep(1*60)
 
 def job_posting(job):
     now = time.time()
@@ -149,43 +220,41 @@ def job_posting(job):
         budget = "💸 <i>Budget Unknown</i>"
     else:
         budget = f"🤑 <i>{budget}</i>"
-    tags = job['skills'].replace(" ","_")
+    tags = job['tags'].replace(" ","_")
     tags = tags.replace(",_",", ")
     country = job['country']
     posted = sec2pass(now-job['posted_on'])
     msg = f"<b>{title}</b>\n---\n💼 {category}, 📍{country}\n---\n<i>{description}</i>\n---\n{budget}\n⏰ <i>{posted}</i>\n---\n{tags}"
     return msg
 
-def test(update: Update, context: CallbackContext):
-    message = context.bot.send_message(chat_id=1880154867,text='hi')
-    context.bot.edit_message_text('hello world', chat_id=1880154867, message_id=message.message_id)
-
-def test_async():
-    print("run in thread")
-
+def rss():
+    """Run UpWorks RSS updater asynchronously."""
+    upwork_rss.run(fetch_time=5)
+    
 def main() -> None:
     """Start the bot."""
+    
     # Create the Updater and pass it your bot's token.
     updater = Updater(API)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # Run the UpWork RSS scraper
-    # 
-
     # Broad cast to all users
-    # dispatcher.bot.send_message(
-    #     chat_id=1880154867,
-    #     text="🚨 _Server is Now Online_",
-    #     parse_mode=ParseMode.MARKDOWN
-    # )
+    users = query_users()
+    for user_id in users:
+        dispatcher.bot.send_message(
+            chat_id=user_id,
+            text="🚨 _Server is Now Online_",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
-    # dispatcher.run_async(test_async)
+    # Run the UpWork RSS updater
+    # dispatcher.run_async(rss)
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("job", send_job))
+    dispatcher.add_handler(CommandHandler("find_job", send_job, run_async=True))
     dispatcher.add_handler(CommandHandler("3d", subscribe))
     dispatcher.add_handler(CommandHandler("scraping", subscribe))
     dispatcher.add_handler(CommandHandler("music", subscribe))
@@ -196,7 +265,6 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
     dispatcher.add_handler(CommandHandler("unsubscribe_all", unsubscribe_all))
     dispatcher.add_handler(CommandHandler("help", start))
-    dispatcher.add_handler(CommandHandler("test", test, run_async=True))
 
     # Start the Bot
     updater.start_polling()
@@ -208,3 +276,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+    end.send_message()
