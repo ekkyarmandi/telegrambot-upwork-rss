@@ -1,4 +1,5 @@
 import sqlite3
+import time
 
 global DATABASE
 
@@ -73,10 +74,11 @@ def query_one(userid,key):
 def query_job():
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
+    now = time.time()-(3*3600)
     try:
         keys = ["hash","title","description","link","budget","posted_on","category","tags","country","label"]
         select = ",".join(keys)
-        cur.execute(f"SELECT {select} FROM job ORDER BY posted_on,label")
+        cur.execute(f"SELECT {select} FROM job WHERE posted_on > {now} ORDER BY posted_on,label")
         results = cur.fetchall()
         values = [{k:v for k,v in zip(keys,result)} for result in results]
     except: values = None
@@ -125,6 +127,7 @@ def delete_job(job_hash):
     con = sqlite3.connect(DATABASE)
     cur = con.cursor()
     cur.execute(f"DELETE FROM job WHERE hash='{job_hash}'")
+    cur.execute(f"DELETE FROM stream WHERE hash='{job_hash}'")
     con.commit()
     con.close()
     
