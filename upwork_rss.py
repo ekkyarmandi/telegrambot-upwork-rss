@@ -1,7 +1,15 @@
 import feedparser
 import hashlib
 import sqlite3
-import json, re, time
+import json
+import re
+import os
+import time
+import schedule
+from datetime import datetime
+
+# clear the terminal
+os.system('cls')
 
 class UpWorkRSS:
 
@@ -128,13 +136,14 @@ class UpWorkRSS:
         param = [f"{k}={v}" for k,v in config.items() if v != None]
         return ref + "?" + "&".join(param)
 
-    def run(self,fetch_time=1):
+    def run(self):
         '''
         Run the RSS requests.
         :param sleep: int or float -> pause query for every <sleep> minute
         '''
-        # print out information
-        print("UpWork RSS Running.. Press Ctrl+Z for canceling the process")
+
+        # printout fetching timestamp
+        print(datetime.now(),'fetching UpWork RSS')
 
         # define the search queries
         search_job = {
@@ -308,32 +317,39 @@ class UpWorkRSS:
             ]
         }
         
-        # loop the process
-        while True:
-            
-            # gather existings jobs via RSS
-            for label in search_job:
-                for search in search_job[label]:
-                    
-                    url = self.rss_url(
-                        query=search['query'],
-                        title=search['title'],
-                        ontology_skill_uid=search['ontology_skill_uid'],
-                        category=search['category']
-                    )
+        # gather existings jobs via RSS
+        for label in search_job:
+            for search in search_job[label]:
+                
+                url = self.rss_url(
+                    query=search['query'],
+                    title=search['title'],
+                    ontology_skill_uid=search['ontology_skill_uid'],
+                    category=search['category']
+                )
 
-                    # parse the rss url
-                    results = feedparser.parse(url)
+                # parse the rss url
+                results = feedparser.parse(url)
 
-                    # insert new job data into database
-                    for entry in results['entries']:
-                        self.gather(entry,label)
-                        self.insert()
-
-            # continue making the request after sleep time below
-            time.sleep(60*fetch_time)
+                # insert new job data into database
+                for entry in results['entries']:
+                    self.gather(entry,label)
+                    self.insert()
 
 if __name__ == "__main__":
 
+    # define the upwork rss object
+    fetch_time = 5
     rss = UpWorkRSS()
-    rss.run(fetch_time=5) # minutes
+    rss.run()
+    
+    # assign a job into scheduler
+    schedule.every(fetch_time).minutes.do(rss.run)
+    
+    # program start timestamp
+    print(datetime.now(),'program starting..')
+
+    # run the schedule
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
