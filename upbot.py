@@ -1,15 +1,18 @@
+# import python-telegram-bot libraries
 import logging
-
 from telegram import Update, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
+# import working scripts
 from scripts.config import API
 from scripts.cmd import *
-from scripts.sq import *
+from scripts.sql import *
 from scripts import end
 from datetime import datetime
-from upwork_rss import UpWorkRSS
-import time, re
+import time, re, os
+
+# clear the terminal
+os.system('cls')
 
 # define global variable
 global WORKING
@@ -24,9 +27,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-# Assign UpWork RSS
-upwork_rss = UpWorkRSS()
 
 # Define a few command handlers. These usually take the two arguments update and context.
 def start(update: Update, context: CallbackContext) -> None:
@@ -164,7 +164,7 @@ def send_job(update: Update, context: CallbackContext) -> None:
                 message_id = query_stream(user_id,job_hash)
 
                 # get filter the job based on subscription and time pass
-                if timeleaps <= (3*3600) and label in profile and message_id == None:
+                if timeleaps <= (2*3600) and label in profile and message_id == None:
                     
                     # send the jobs
                     msg = job_posting(job)
@@ -187,24 +187,27 @@ def send_job(update: Update, context: CallbackContext) -> None:
 
                 # filter two: if the job has been sent, then update it's time by editing the message
                 elif message_id != None:
-                    if timeleaps <= (3*3600):
+                    if timeleaps <= (2*3600):
                         msg = job_posting(job)
                     else:
                         msg = "<i>Job Expired</i>"
                         delete_job(job_hash)
                     
                     # edit the existings message
-                    context.bot.edit_message_text(
-                        text=msg,
-                        chat_id=user_id,
-                        message_id=message_id,
-                        parse_mode=ParseMode.HTML,
-                        disable_web_page_preview=True
-                    )
+                    try:
+                        context.bot.edit_message_text(
+                            text=msg,
+                            chat_id=user_id,
+                            message_id=message_id,
+                            parse_mode=ParseMode.HTML,
+                            disable_web_page_preview=True
+                        )
 
-                    # put some delay
-                    time.sleep(1)
+                        # put some delay
+                        time.sleep(1)
                         
+                    except: pass
+
             # wait for a minute
             time.sleep(1*60)
 
@@ -212,6 +215,7 @@ def job_posting(job):
     now = time.time()
     title = f"<a href='{job['link']}'>{job['title']}</a>"
     category = job['category']
+    tags = job['tags']
     description = re.sub("\s+"," ",job['description']).strip()
     if len(description) > 360:
         description = description[:360].strip().strip(".") + "..."
@@ -220,17 +224,17 @@ def job_posting(job):
         budget = "💸 <i>Budget Unknown</i>"
     else:
         budget = f"🤑 <i>{budget}</i>"
-    tags = job['tags'].replace(" ","_")
-    tags = tags.replace(",_",", ")
+    if tags != None:
+        tags = tags.replace(" ","_")
+        tags = tags.replace("&","and")
+        tags = tags.replace(",_",", ")
+    else:
+        tags = '~'
     country = job['country']
     posted = sec2pass(now-job['posted_on'])
     msg = f"<b>{title}</b>\n---\n💼 {category}, 📍{country}\n---\n<i>{description}</i>\n---\n{budget}\n⏰ <i>{posted}</i>\n---\n{tags}"
     return msg
 
-def rss():
-    """Run UpWorks RSS updater asynchronously."""
-    upwork_rss.run(fetch_time=5)
-    
 def main() -> None:
     """Start the bot."""
     
@@ -248,9 +252,6 @@ def main() -> None:
             text="🚨 _Server is Now Online_",
             parse_mode=ParseMode.MARKDOWN
         )
-
-    # Run the UpWork RSS updater
-    # dispatcher.run_async(rss)
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
