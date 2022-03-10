@@ -6,7 +6,7 @@ def send_message():
     url = f"https://api.telegram.org/bot{API}/sendMessage"
 
     payload = {
-        "text": "📴 _Server Now Offline_",
+        "text": "📴 _Server is Now Offline_",
         "parse_mode": "Markdown",
         "disable_web_page_preview": False,
         "disable_notification": False,
