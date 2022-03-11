@@ -7,7 +7,6 @@ from telegram.ext import Updater, CommandHandler, CallbackContext
 from scripts.config import API
 from scripts.cmd import *
 from scripts.sql import *
-from scripts import end
 from datetime import datetime
 import time, re, os
 
@@ -16,6 +15,7 @@ os.system('cls')
 
 # define global variable
 global WORKING
+
 WORKING = []
 
 # Reset stream table from database
@@ -280,4 +280,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-    end.send_message()

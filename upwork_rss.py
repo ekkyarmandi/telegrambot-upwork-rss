@@ -8,9 +8,6 @@ import time
 import schedule
 from datetime import datetime
 
-# clear the terminal
-os.system('cls')
-
 class UpWorkRSS:
 
     def reformat(self,text):
