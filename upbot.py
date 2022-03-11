@@ -190,7 +190,7 @@ def send_job(update: Update, context: CallbackContext) -> None:
                     if timeleaps <= (2*3600):
                         msg = job_posting(job)
                     else:
-                        msg = "<i>Job Expired</i>"
+                        msg = f"<a href='{job['link']}'><b>{job['title']}</b></a>\n<i>Description Archived</i>"
                         delete_job(job_hash)
                     
                     # edit the existings message
@@ -208,6 +208,9 @@ def send_job(update: Update, context: CallbackContext) -> None:
                         
                     except: pass
 
+                elif timeleaps > (2*3600):
+                    delete_job(job_hash)
+
             # wait for a minute
             time.sleep(1*60)
 
@@ -221,7 +224,7 @@ def job_posting(job):
         description = description[:360].strip().strip(".") + "..."
     budget = job['budget']
     if budget == None:
-        budget = "💸 <i>Budget Unknown</i>"
+        budget = "🤔 <i>Budget Unknown</i>"
     else:
         budget = f"🤑 <i>{budget}</i>"
     if tags != None:
