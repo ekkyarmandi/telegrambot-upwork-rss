@@ -336,7 +336,7 @@ class UpWorkRSS:
 if __name__ == "__main__":
 
     # define the upwork rss object
-    fetch_time = 5
+    fetch_time = 1
     rss = UpWorkRSS()
     rss.run()
     
