@@ -1,7 +1,7 @@
 # import python-telegram-bot libraries
 import logging
 from telegram import Update, ParseMode
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler
+from telegram.ext import Updater, CommandHandler, CallbackContext
 
 # import working scripts
 from scripts.config import API
@@ -136,84 +136,83 @@ def status(update: Update, context: CallbackContext) -> None:
 def send_job(update: Update, context: CallbackContext) -> None:
 
     # make sure user can not execute the callback/command more than once
-    if "Server is Now Online" in update.message.text:
-    
-        # get the user_id
-        user_id = update.effective_user.id
         
-        if user_id not in WORKING:
-            WORKING.append(user_id)
+    # get the user_id
+    user_id = update.effective_user.id
+    
+    if user_id not in WORKING:
+        WORKING.append(user_id)
 
-            # loop entry point
-            while True:
+        # loop entry point
+        while True:
 
-                now = time.time()
-                
-                # get the user subscribtion
-                profile = query_subscription(user_id)
-                profile = [k for k,v in profile.items() if v]
-                
-                # get all the job
-                jobs = query_job()
+            now = time.time()
+            
+            # get the user subscribtion
+            profile = query_subscription(user_id)
+            profile = [k for k,v in profile.items() if v]
+            
+            # get all the job
+            jobs = query_job()
 
-                for job in jobs:
+            for job in jobs:
 
-                    # get job passing time and label
-                    timeleaps = now - job['posted_on']
-                    label = job['label']
-                    job_hash = job['hash']
-                    message_id = query_stream(user_id,job_hash)
+                # get job passing time and label
+                timeleaps = now - job['posted_on']
+                label = job['label']
+                job_hash = job['hash']
+                message_id = query_stream(user_id,job_hash)
 
-                    # get filter the job based on subscription and time pass
-                    if timeleaps <= (2*3600) and label in profile and message_id == None:
-                        
-                        # send the jobs
+                # get filter the job based on subscription and time pass
+                if timeleaps <= (2*3600) and label in profile and message_id == None:
+                    
+                    # send the jobs
+                    msg = job_posting(job)
+                    msg_out = context.bot.send_message(
+                        text=msg,
+                        chat_id=user_id,
+                        parse_mode=ParseMode.HTML,
+                        disable_web_page_preview=True
+                    )
+                    
+                    # put some delay
+                    time.sleep(1)
+
+                    # update the sent jobs database
+                    update_stream(
+                        user_id=user_id,
+                        hash=job_hash,
+                        message_id=msg_out.message_id
+                    )
+
+                # filter two: if the job has been sent, then update it's time by editing the message
+                elif message_id != None:
+                    if timeleaps <= (2*3600):
                         msg = job_posting(job)
-                        msg_out = context.bot.send_message(
+                    else:
+                        msg = f"<a href='{job['link']}'><b>{job['title']}</b></a>\n<i>Description Archived</i>"
+                        delete_job(job_hash)
+                    
+                    # edit the existings message
+                    try:
+                        context.bot.edit_message_text(
                             text=msg,
                             chat_id=user_id,
+                            message_id=message_id,
                             parse_mode=ParseMode.HTML,
                             disable_web_page_preview=True
                         )
-                        
+
                         # put some delay
                         time.sleep(1)
-
-                        # update the sent jobs database
-                        update_stream(
-                            user_id=user_id,
-                            hash=job_hash,
-                            message_id=msg_out.message_id
-                        )
-
-                    # filter two: if the job has been sent, then update it's time by editing the message
-                    elif message_id != None:
-                        if timeleaps <= (2*3600):
-                            msg = job_posting(job)
-                        else:
-                            msg = f"<a href='{job['link']}'><b>{job['title']}</b></a>\n<i>Description Archived</i>"
-                            delete_job(job_hash)
                         
-                        # edit the existings message
-                        try:
-                            context.bot.edit_message_text(
-                                text=msg,
-                                chat_id=user_id,
-                                message_id=message_id,
-                                parse_mode=ParseMode.HTML,
-                                disable_web_page_preview=True
-                            )
+                    except: pass
 
-                            # put some delay
-                            time.sleep(1)
-                            
-                        except: pass
+                elif timeleaps > (2*3600):
+                    delete_job(job_hash)
 
-                    elif timeleaps > (2*3600):
-                        delete_job(job_hash)
-
-                # wait for a minute
-                time.sleep(1*60)
+            # wait for a minute
+            time.sleep(1*60)
 
 def job_posting(job):
     now = time.time()
@@ -251,7 +250,7 @@ def main() -> None:
     # Broad cast to all users
     users = query_users()
     for user_id in users:
-        msg = dispatcher.bot.send_message(
+        dispatcher.bot.send_message(
             chat_id=user_id,
             text="🚨 _Server is Now Online_",
             parse_mode=ParseMode.MARKDOWN
@@ -259,7 +258,7 @@ def main() -> None:
 
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
-    # dispatcher.add_handler(CommandHandler("find_job", send_job, run_async=True))
+    dispatcher.add_handler(CommandHandler("find_job", send_job, run_async=True))
     dispatcher.add_handler(CommandHandler("3d", subscribe))
     dispatcher.add_handler(CommandHandler("scraping", subscribe))
     dispatcher.add_handler(CommandHandler("music", subscribe))
@@ -270,7 +269,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
     dispatcher.add_handler(CommandHandler("unsubscribe_all", unsubscribe_all))
     dispatcher.add_handler(CommandHandler("help", start))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, send_job, run_async=True))
+    # dispatcher.add_handler(MessageHandler(Filters.text, send_job, run_async=True))
 
     # Start the Bot
     updater.start_polling()

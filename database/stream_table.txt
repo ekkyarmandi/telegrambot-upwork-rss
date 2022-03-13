@@ -1,0 +1,3 @@
+user_id TEXT
+message_id TEXT
+hash TEXT
